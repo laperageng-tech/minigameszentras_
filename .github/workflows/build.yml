@@ -17,25 +17,40 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
-          cache: maven
+
+      - name: Cari project
+        id: p
+        run: |
+          if [ -z "$(find . -name pom.xml -not -path './.git/*' | head -1)" ]; then
+            ZIP=$(find . -maxdepth 2 -iname '*.zip' | head -1)
+            if [ -n "$ZIP" ]; then unzip -q "$ZIP" -d project; fi
+          fi
+          POM=$(find . -name pom.xml -not -path './.git/*' | head -1)
+          if [ -z "$POM" ]; then
+            echo "pom.xml tidak ditemukan. Isi repo:"
+            find . -not -path './.git/*' | head -40
+            exit 1
+          fi
+          echo "dir=$(dirname "$POM")" >> "$GITHUB_OUTPUT"
 
       - name: Build dengan Maven
         run: mvn -B -ntp clean package
+        working-directory: ${{ steps.p.outputs.dir }}
 
       - name: Upload jar (Artifacts)
         uses: actions/upload-artifact@v4
         with:
           name: ZentraMinigames
-          path: target/ZentraMinigames-*.jar
+          path: ${{ steps.p.outputs.dir }}/target/ZentraMinigames-*.jar
           if-no-files-found: error
 
       - name: Buat Release (kalau push tag v*)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: target/ZentraMinigames-*.jar
+          files: ${{ steps.p.outputs.dir }}/target/ZentraMinigames-*.jar
           generate_release_notes: true
