@@ -4,7 +4,6 @@ on:
   push:
     branches: [main, master]
     tags: ['v*']
-  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -22,21 +21,24 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-          cache: maven
+
+      - name: Ekstrak project dari zip
+        run: unzip -q ZentraMinigames-github-repo.zip -d project
 
       - name: Build dengan Maven
         run: mvn -B clean package
+        working-directory: project
 
       - name: Upload jar (Artifacts)
         uses: actions/upload-artifact@v4
         with:
           name: ZentraMinigames
-          path: target/ZentraMinigames-*.jar
+          path: project/target/ZentraMinigames-*.jar
           if-no-files-found: error
 
       - name: Buat Release (kalau push tag v*)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: target/ZentraMinigames-*.jar
+          files: project/target/ZentraMinigames-*.jar
           generate_release_notes: true
