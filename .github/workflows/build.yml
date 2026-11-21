@@ -4,11 +4,10 @@ on:
   push:
     branches: [ main, master ]
     tags: [ 'v*' ]
-  pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: write   # hanya dipakai untuk membuat GitHub Release saat push tag v*
+  contents: write
 
 jobs:
   build:
@@ -17,25 +16,43 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Siapkan proyek (pom.xml di root atau di dalam zip)
+        run: |
+          if [ ! -f pom.xml ]; then
+            ZIP=$(ls ./*.zip 2>/dev/null | head -n1 || true)
+            if [ -n "$ZIP" ]; then
+              echo "Membongkar $ZIP"
+              unzip -q "$ZIP" -d _src
+            fi
+            POM=$(find . -name pom.xml -not -path './.git/*' | head -n1)
+            if [ -z "$POM" ]; then
+              echo "::error::pom.xml tidak ditemukan. Upload isi proyek atau ZentraMinigames-fixed.zip ke root repo."
+              exit 1
+            fi
+            echo "PROJECT_DIR=$(dirname "$POM")" >> "$GITHUB_ENV"
+          else
+            echo "PROJECT_DIR=." >> "$GITHUB_ENV"
+          fi
+
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
-          cache: maven
 
       - name: Build with Maven
+        working-directory: ${{ env.PROJECT_DIR }}
         run: mvn -B -ntp clean package
 
       - name: Upload plugin jar
         uses: actions/upload-artifact@v4
         with:
           name: ZentraMinigames
-          path: target/ZentraMinigames-*.jar
+          path: ${{ env.PROJECT_DIR }}/target/ZentraMinigames-*.jar
           if-no-files-found: error
 
       - name: Publish GitHub Release (tag v*)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: target/ZentraMinigames-*.jar
+          files: ${{ env.PROJECT_DIR }}/target/ZentraMinigames-*.jar
