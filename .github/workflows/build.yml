@@ -21,24 +21,21 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-
-      - name: Ekstrak project dari zip
-        run: unzip -q ZentraMinigames-github-repo.zip -d project
+          cache: maven
 
       - name: Build dengan Maven
-        run: mvn -B clean package
-        working-directory: project
+        run: mvn -B -ntp clean package
 
       - name: Upload jar (Artifacts)
         uses: actions/upload-artifact@v4
         with:
           name: ZentraMinigames
-          path: project/target/ZentraMinigames-*.jar
+          path: target/ZentraMinigames-*.jar
           if-no-files-found: error
 
       - name: Buat Release (kalau push tag v*)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: project/target/ZentraMinigames-*.jar
+          files: target/ZentraMinigames-*.jar
           generate_release_notes: true
